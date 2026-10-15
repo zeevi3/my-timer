@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#141414">
+<title>Timer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141414; --surface:#1f1f1f; --surface2:#2a2a2a; --line:#333;
+  --text:#f4f4f4; --muted:#8d8d8d; --ink:#111;
+  --yellow:#FFF23D; --green:#9CFF3D; --red:#F2392C; --blue:#3BAEE6;
+  --display:'Bebas Neue',Impact,'Arial Narrow',sans-serif;
+  --ui:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--ui)}
+body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input{font:inherit;color:inherit;background:none;border:0;outline:0;-webkit-user-select:text;user-select:text;min-width:0}
+svg{display:block}
+.disp{font-family:var(--display);font-weight:400;letter-spacing:.02em}
+
+/* ---------- Home ---------- */
+.top{padding:calc(env(safe-area-inset-top) + 22px) 16px 10px;max-width:640px;margin:0 auto}
+.logo{font-family:var(--display);font-size:44px;color:var(--yellow);font-style:italic;line-height:1;display:flex;align-items:baseline;gap:10px}
+.logo span{color:var(--green);font-size:34px;letter-spacing:-.12em}
+.list{padding:10px 16px 48px;display:flex;flex-direction:column;gap:12px;max-width:640px;margin:0 auto}
+.card{background:var(--surface);border-radius:20px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+.card h2{font-family:var(--display);font-weight:400;font-size:30px;line-height:1;overflow-wrap:anywhere}
+.card .tot{font-family:var(--display);font-size:22px;color:var(--yellow);margin-top:4px}
+.card .sum{grid-column:1/-1;font-size:13px;color:var(--muted);line-height:1.55}
+.card .sum b{color:var(--text);font-weight:600}
+.strip{grid-column:1/-1;display:flex;gap:2px;height:8px;border-radius:4px;overflow:hidden;background:var(--surface2)}
+.strip i{display:block;min-width:2px}
+.acts{display:flex;gap:10px;align-items:center}
+.play-sm{width:58px;height:58px;border-radius:50%;background:var(--yellow);color:var(--ink);display:grid;place-items:center}
+.icon-btn{width:44px;height:44px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;color:var(--text)}
+.add-card{border:2px dashed var(--line);border-radius:20px;padding:18px;font-family:var(--display);font-size:24px;color:var(--muted)}
+.add-card:active{background:var(--surface)}
+
+/* ---------- Editor ---------- */
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid var(--surface2)}
+.bar h1{font-family:var(--display);font-weight:400;font-size:26px}
+.bar button{font-family:var(--display);font-size:24px;color:var(--muted);justify-self:end;padding:6px 0}
+.bar button.save{color:var(--green);justify-self:start}
+.editor{padding:16px 16px 60px;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.wname{font-family:var(--display);font-size:34px;width:100%;border-bottom:2px solid var(--surface2);padding:4px 0}
+.wname:focus{border-color:var(--yellow)}
+.total{font-family:var(--display);font-size:20px;color:var(--muted)}
+.total b{color:var(--yellow);font-weight:400}
+.block{background:var(--surface);border-radius:20px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.bhead{display:flex;align-items:center;gap:8px;padding:2px 2px 6px}
+.bname{flex:1;font-family:var(--display);font-size:24px;color:var(--text);padding:4px 0;border-bottom:1px solid transparent}
+.bname:focus{border-color:var(--line)}
+.rep{display:flex;align-items:center;background:var(--surface2);border-radius:999px}
+.rep button{width:38px;height:38px;font-size:22px;color:var(--text)}
+.rep span{font-family:var(--display);font-size:24px;min-width:40px;text-align:center;color:var(--blue)}
+.step{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:14px;padding:8px 6px 8px 10px}
+.dot{width:26px;height:26px;border-radius:50%;flex:none}
+.sname{flex:1;font-family:var(--display);font-size:22px;padding:4px 0}
+.time{font-family:var(--display);font-size:30px;padding:0 8px;border-radius:10px;background:var(--bg);min-width:84px;text-align:center}
+.more{width:36px;height:40px;display:grid;place-items:center;color:var(--muted)}
+.menu{display:flex;gap:6px;padding:2px 0 6px;flex-wrap:wrap}
+.menu button{flex:1;min-width:64px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--muted);background:var(--bg);border-radius:12px;padding:8px 4px}
+.menu button svg{color:var(--text)}
+.menu button.danger svg,.menu button.danger{color:var(--red)}
+.add-step{font-family:var(--display);font-size:20px;color:var(--green);padding:10px;border-radius:14px;border:1.5px dashed #3a3a3a}
+.add-block{font-family:var(--display);font-size:22px;color:var(--blue);padding:14px;border-radius:20px;border:2px dashed var(--line)}
+.del-w{font-family:var(--display);font-size:20px;color:var(--red);padding:14px;margin-top:10px}
+
+/* ---------- Picker sheet ---------- */
+.sheet{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet.hidden{display:none}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.7)}
+.sheet-card{position:relative;width:100%;max-width:520px;background:#1b1b1b;border-radius:22px 22px 0 0;overflow:hidden;padding-bottom:env(safe-area-inset-bottom);animation:up .18s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+.sheet-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 18px;background:#222}
+.sheet-bar h2{font-family:var(--display);font-weight:400;font-size:24px;max-width:46vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-bar button{font-family:var(--display);font-size:24px;color:var(--muted);justify-self:end}
+.sheet-bar button.ok{color:var(--green);justify-self:start}
+.wheels{position:relative;display:flex;justify-content:center;align-items:center;gap:14px;padding:6px 0}
+.wheels label{font-family:var(--display);font-size:24px;color:var(--text);position:relative;z-index:1}
+.wheel{height:220px;width:84px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;position:relative;z-index:1;
+  -webkit-mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent);mask-image:linear-gradient(transparent,#000 35%,#000 65%,transparent)}
+.wheel::-webkit-scrollbar{display:none}
+.wheel div{height:44px;line-height:44px;text-align:center;font-family:var(--display);font-size:34px;color:#777;scroll-snap-align:center}
+.wheel div.on{color:#fff;font-size:44px}
+.wheel .pad{height:88px;scroll-snap-align:none}
+.hl{position:absolute;left:16px;right:16px;top:50%;height:46px;transform:translateY(-50%);border-radius:12px;background:#2a2a2a}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 14px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;font-family:var(--display);font-size:20px;padding:6px 14px;border-radius:999px;background:var(--surface2)}
+.colors{display:grid;grid-template-columns:repeat(4,1fr);height:72px}
+.colors button{display:grid;place-items:center;color:var(--ink)}
+
+/* ---------- Run ---------- */
+.run{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.rtop{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;text-align:center}
+.rtop .icon-btn{background:none;border:2px solid var(--yellow);color:var(--yellow)}
+.rname{font-family:var(--display);font-size:20px;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
+.rtot{font-family:var(--display);font-size:46px;color:var(--yellow);line-height:1}
+.cur{flex:3.2;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink);position:relative;transition:background-color .25s;min-height:0;padding:0 8px}
+.clabel{font-family:var(--display);font-size:min(16vw,9vh);line-height:.95;text-align:center;max-width:100%;overflow-wrap:anywhere}
+.ctime{font-family:var(--display);font-size:min(50vw,25vh);line-height:.85;font-variant-numeric:tabular-nums;letter-spacing:0}
+.ctime.long{font-size:min(34vw,20vh)}
+.cmeta{font-family:var(--display);font-size:min(6.5vw,3.6vh);opacity:.75;margin-top:4px}
+.prog{position:absolute;left:0;right:0;bottom:0;height:6px;background:rgba(0,0,0,.18)}
+.prog i{display:block;height:100%;width:0;background:rgba(0,0,0,.55)}
+.nxt{flex:1.15;filter:brightness(.8) saturate(.85);border-top:3px solid var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink);transition:background-color .25s;min-height:0}
+.nlabel{font-family:var(--display);font-size:min(9vw,5vh);line-height:1}
+.ntime{font-family:var(--display);font-size:min(17vw,9vh);line-height:.95}
+.nxt.end{color:var(--muted);filter:none}
+.ctrl{display:grid;grid-template-columns:1fr 48px 92px 48px 1fr;align-items:center;gap:8px;padding:16px 12px calc(env(safe-area-inset-bottom) + 18px)}
+.stat{text-align:center}
+.stat b{display:block;font-family:var(--display);font-weight:400;font-size:38px;line-height:1}
+.stat span{font-family:var(--display);font-size:15px;color:var(--text)}
+.stat.l b{color:var(--yellow)} .stat.r b{color:var(--blue)}
+.skip{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--text);background:var(--surface2)}
+.big{width:92px;height:92px;border-radius:50%;background:var(--yellow);color:var(--ink);display:grid;place-items:center;box-shadow:inset 0 0 0 5px var(--yellow),inset 0 0 0 8px var(--ink)}
+.big:active,.skip:active,.play-sm:active{transform:scale(.95)}
+.toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#333;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:30}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheet" class="sheet hidden"></div>
+
+<script>
+'use strict';
+// ---------- Constants & helpers ----------
+const COLORS = { green:'#9CFF3D', red:'#F2392C', yellow:'#FFF23D', blue:'#3BAEE6' };
+const COLOR_ORDER = ['green', 'red', 'yellow', 'blue'];
+const KEY = 'timer.workouts.v1';
+const SOUND_KEY = 'timer.sound.v1';
+const $ = id => document.getElementById(id);
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const pad2 = n => String(n).padStart(2, '0');
+function fmt(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+  return h ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
+}
+const fmtShort = sec => sec < 60 ? `${sec}s` : (sec % 60 ? fmt(sec) : `${sec / 60}m`);
+
+const I = {
+  play:'<svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+  pause:'<svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>',
+  again:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg>',
+  prev:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18 5v14L8 12z"/><rect x="5" y="5" width="2.5" height="14" rx="1"/></svg>',
+  next:'<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5v14l10-7z"/><rect x="16.5" y="5" width="2.5" height="14" rx="1"/></svg>',
+  close:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  edit:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+  more:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
+  up:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+  down:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>',
+  copy:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
+  trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  soundOn:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  soundOff:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+  check:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+};
+
+// ---------- Data ----------
+const mkStep = (name, sec, color) => ({ id: uid(), name, sec, color });
+const mkBlock = (name, repeat, steps) => ({ id: uid(), name, repeat, steps });
+function defaults() {
+  return [
+    { id: uid(), name: 'My Workout', blocks: [
+      mkBlock('Warm up', 1, [mkStep('Prepare', 5, 'yellow')]),
+      mkBlock('Main', 5, [mkStep('Work A', 60, 'green'), mkStep('Work B', 120, 'green'), mkStep('Rest', 5, 'red')]),
+    ]},
+    { id: uid(), name: 'Tabata', blocks: [
+      mkBlock('Warm up', 1, [mkStep('Prepare', 10, 'yellow')]),
+      mkBlock('Tabata', 8, [mkStep('Work', 20, 'green'), mkStep('Rest', 10, 'red')]),
+    ]},
+  ];
+}
+function load() {
+  try { const v = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(v)) return v; } catch (e) {}
+  return defaults();
+}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(workouts)); } catch (e) {} }
+let workouts = load();
+let soundOn = true;
+try { soundOn = localStorage.getItem(SOUND_KEY) !== '0'; } catch (e) {}
+
+// Expand blocks × repeats into the flat sequence the timer plays.
+function flatten(w) {
+  const out = [];
+  for (const b of w.blocks) {
+    const n = Math.max(1, b.repeat | 0);
+    for (let r = 1; r <= n; r++)
+      for (const s of b.steps)
+        if (s.sec > 0) out.push({ name: s.name.trim() || 'Step', sec: s.sec, color: s.color, block: b.name.trim(), round: r, rounds: n });
+  }
+  return out;
+}
+const totalSec = w => flatten(w).reduce((a, s) => a + s.sec, 0);
+
+// ---------- Audio: soft bell tones via Web Audio ----------
+const audio = {
+  ctx: null,
+  unlock() {
+    if (!this.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (C) this.ctx = new C(); }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+};
+function tone(freq, at, dur, vol, type = 'sine') {
+  const c = audio.ctx; if (!c || !soundOn) return;
+  const t = c.currentTime + at;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+// A bell = sine fundamental + a quiet, faster-decaying octave for shimmer.
+function bell(f, at, dur, vol) { tone(f, at, dur, vol); tone(f * 2, at, dur * 0.45, vol * 0.18); }
+const sfx = {
+  pip: () => bell(659, 0, 0.18, 0.16),
+  go: () => { bell(784, 0, 0.45, 0.24); bell(1175, 0.11, 0.8, 0.22); },     // rising: effort starts
+  ease: () => { bell(1047, 0, 0.45, 0.2); bell(698, 0.11, 0.8, 0.2); },     // falling: rest starts
+  done: () => [523, 659, 784, 1047].forEach((f, i) => bell(f, i * 0.13, i === 3 ? 1.4 : 0.5, 0.22)),
+};
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+function announce(s) {
+  const effort = s.color === 'green' || s.color === 'blue';
+  effort ? sfx.go() : sfx.ease();
+  buzz(effort ? [70, 60, 70] : [120]);
+}
+
+// ---------- Screen wake lock ----------
+let wakeLock = null;
+async function wakeOn() { try { if ('wakeLock' in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (e) {} }
+function wakeOff() { try { wakeLock && wakeLock.release(); } catch (e) {} wakeLock = null; }
+
+// ---------- Views ----------
+const app = $('app');
+let view = 'home';
+let draft = null, draftIsNew = false, openMenu = null;
+let run = null;
+
+function go(v) {
+  if (v !== 'home' && view === 'home') history.pushState({ v }, '');
+  view = v; render(); window.scrollTo(0, 0);
+}
+function goHome() {
+  stopRun(); closeSheet();
+  if (view !== 'home' && history.state && history.state.v) { history.back(); return; }
+  view = 'home'; render();
+}
+window.addEventListener('popstate', () => {
+  if (!$('sheet').classList.contains('hidden')) closeSheet();
+  stopRun(); view = 'home'; render();
+});
+
+function render() {
+  if (view === 'home') renderHome();
+  else if (view === 'edit') renderEdit();
+  else if (view === 'run') renderRun();
+}
+
+// ----- Home -----
+function summary(w) {
+  return w.blocks.filter(b => b.steps.length).map(b => {
+    const steps = b.steps.map(s => `${esc(s.name || 'Step')} ${fmtShort(s.sec)}`).join(' → ');
+    return (b.repeat > 1 ? `<b>${b.repeat}×</b> ` : '') + steps;
+  }).join('<br>');
+}
+function renderHome() {
+  app.innerHTML = `
+    <header class="top"><div class="logo">TIMER <span>❯❯❯❯❯</span></div></header>
+    <main class="list">
+      ${workouts.map(w => {
+        const seq = flatten(w);
+        return `<article class="card">
+          <div><h2>${esc(w.name)}</h2><div class="tot">${fmt(totalSec(w))}</div></div>
+          <div class="acts">
+            <button class="icon-btn" data-act="edit" data-id="${w.id}" aria-label="Edit">${I.edit}</button>
+            <button class="play-sm" data-act="start" data-id="${w.id}" aria-label="Start">${I.play}</button>
+          </div>
+          <div class="strip">${seq.map(s => `<i style="flex:${s.sec};background:${COLORS[s.color]}"></i>`).join('')}</div>
+          <div class="sum">${summary(w) || 'No steps yet'}</div>
+        </article>`;
+      }).join('')}
+      <button class="add-card" data-act="new">+ New workout</button>
+    </main>`;
+}
+
+// ----- Editor -----
+function renderEdit() {
+  const w = draft;
+  app.innerHTML = `
+    <header class="bar">
+      <button class="save" data-act="save">Save</button>
+      <h1>${draftIsNew ? 'New workout' : 'Edit'}</h1>
+      <button data-act="cancel">Cancel</button>
+    </header>
+    <main class="editor">
+      <input class="wname" data-field="wname" value="${esc(w.name)}" placeholder="WORKOUT NAME" maxlength="40">
+      <div class="total">Total <b>${fmt(totalSec(w))}</b></div>
+      ${w.blocks.map((b, bi) => `
+        <section class="block">
+          <div class="bhead">
+            <input class="bname" data-field="bname" data-b="${bi}" value="${esc(b.name)}" placeholder="BLOCK NAME" maxlength="30">
+            <div class="rep">
+              <button data-act="rep" data-b="${bi}" data-d="-1" aria-label="Fewer rounds">−</button>
+              <span>×${b.repeat}</span>
+              <button data-act="rep" data-b="${bi}" data-d="1" aria-label="More rounds">+</button>
+            </div>
+            <button class="more" data-act="menu" data-key="b${bi}" aria-label="Block options">${I.more}</button>
+          </div>
+          ${openMenu === `b${bi}` ? menu('b', bi) : ''}
+          ${b.steps.map((s, si) => `
+            <div class="step">
+              <button class="dot" style="background:${COLORS[s.color]}" data-act="color" data-b="${bi}" data-s="${si}" aria-label="Change color"></button>
+              <input class="sname" data-field="sname" data-b="${bi}" data-s="${si}" value="${esc(s.name)}" placeholder="STEP" maxlength="24">
+              <button class="time" data-act="time" data-b="${bi}" data-s="${si}">${fmt(s.sec)}</button>
+              <button class="more" data-act="menu" data-key="s${bi}.${si}" aria-label="Step options">${I.more}</button>
+            </div>
+            ${openMenu === `s${bi}.${si}` ? menu('s', bi, si) : ''}`).join('')}
+          <button class="add-step" data-act="addStep" data-b="${bi}">+ Add step</button>
+        </section>`).join('')}
+      <button class="add-block" data-act="addBlock">+ Add block</button>
+      ${draftIsNew ? '' : '<button class="del-w" data-act="delWorkout">Delete workout</button>'}
+    </main>`;
+}
+function menu(kind, bi, si) {
+  const a = `data-b="${bi}"${si != null ? ` data-s="${si}"` : ''} data-kind="${kind}"`;
+  return `<div class="menu">
+    <button data-act="mv" data-d="-1" ${a}>${I.up}Up</button>
+    <button data-act="mv" data-d="1" ${a}>${I.down}Down</button>
+    <button data-act="dup" ${a}>${I.copy}Duplicate</button>
+    <button class="danger" data-act="del" ${a}>${I.trash}Delete</button>
+  </div>`;
+}
+function move(arr, i, d) {
+  const j = i + d; if (j < 0 || j >= arr.length) return false;
+  [arr[i], arr[j]] = [arr[j], arr[i]]; return true;
+}
+
+// Text fields update the draft in place, without re-rendering (keeps focus).
+app.addEventListener('input', e => {
+  const t = e.target, f = t.dataset.field; if (!f || !draft) return;
+  if (f === 'wname') draft.name = t.value;
+  if (f === 'bname') draft.blocks[+t.dataset.b].name = t.value;
+  if (f === 'sname') draft.blocks[+t.dataset.b].steps[+t.dataset.s].name = t.value;
+});
+app.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur(); });
+
+app.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act, bi = +t.dataset.b, si = +t.dataset.s;
+  const find = () => workouts.find(w => w.id === t.dataset.id);
+  switch (act) {
+    // home
+    case 'start': startRun(find()); break;
+    case 'edit': draft = clone(find()); draftIsNew = false; openMenu = null; go('edit'); break;
+    case 'new':
+      draft = { id: uid(), name: '', blocks: [
+        mkBlock('Warm up', 1, [mkStep('Prepare', 5, 'yellow')]),
+        mkBlock('Main', 3, [mkStep('Work', 60, 'green'), mkStep('Rest', 15, 'red')]),
+      ]};
+      draftIsNew = true; openMenu = null; go('edit'); break;
+    // editor
+    case 'save': {
+      draft.name = draft.name.trim() || 'Workout';
+      const i = workouts.findIndex(w => w.id === draft.id);
+      if (i >= 0) workouts[i] = draft; else workouts.push(draft);
+      persist(); draft = null; goHome(); break;
+    }
+    case 'cancel': draft = null; goHome(); break;
+    case 'delWorkout':
+      if (confirm(`Delete "${draft.name || 'this workout'}"?`)) {
+        workouts = workouts.filter(w => w.id !== draft.id); persist(); draft = null; goHome();
+      }
+      break;
+    case 'rep': { const b = draft.blocks[bi]; b.repeat = Math.min(99, Math.max(1, b.repeat + +t.dataset.d)); renderEdit(); break; }
+    case 'color': { const s = draft.blocks[bi].steps[si]; s.color = COLOR_ORDER[(COLOR_ORDER.indexOf(s.color) + 1) % 4]; renderEdit(); break; }
+    case 'time': openPicker(bi, si); break;
+    case 'menu': openMenu = openMenu === t.dataset.key ? null : t.dataset.key; renderEdit(); break;
+    case 'addStep': {
+      const steps = draft.blocks[bi].steps, last = steps[steps.length - 1];
+      const rest = last && last.color !== 'red';
+      steps.push(mkStep(rest ? 'Rest' : 'Work', rest ? 10 : 30, rest ? 'red' : 'green'));
+      openMenu = null; renderEdit(); break;
+    }
+    case 'addBlock': draft.blocks.push(mkBlock(`Block ${draft.blocks.length + 1}`, 3, [mkStep('Work', 30, 'green'), mkStep('Rest', 10, 'red')])); openMenu = null; renderEdit(); break;
+    case 'mv': case 'dup': case 'del': {
+      const isStep = t.dataset.kind === 's';
+      const arr = isStep ? draft.blocks[bi].steps : draft.blocks, i = isStep ? si : bi;
+      if (act === 'mv') { if (move(arr, i, +t.dataset.d)) openMenu = isStep ? `s${bi}.${i + +t.dataset.d}` : `b${i + +t.dataset.d}`; }
+      if (act === 'dup') { const c = clone(arr[i]); c.id = uid(); if (!isStep) c.steps.forEach(s => s.id = uid()); arr.splice(i + 1, 0, c); openMenu = null; }
+      if (act === 'del') { arr.splice(i, 1); openMenu = null; }
+      renderEdit(); break;
+    }
+    // run
+    case 'toggle': togglePlay(); break;
+    case 'skip': skip(+t.dataset.d); break;
+    case 'exit':
+      if (run && run.started && !run.done && !confirm('End this workout?')) break;
+      goHome(); break;
+    case 'sound':
+      soundOn = !soundOn; try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
+      t.innerHTML = soundOn ? I.soundOn : I.soundOff; break;
+  }
+});
+
+// ----- Time picker sheet -----
+const ITEM_H = 44;
+let pick = null;
+function wheelHTML(id, n) {
+  let h = '<div class="pad"></div>';
+  for (let i = 0; i < n; i++) h += `<div>${pad2(i)}</div>`;
+  return `<div class="wheel" id="${id}">${h}<div class="pad"></div></div>`;
+}
+function openPicker(bi, si) {
+  const s = draft.blocks[bi].steps[si];
+  pick = { bi, si, color: s.color };
+  const sh = $('sheet');
+  sh.innerHTML = `
+    <div class="sheet-bg" data-sact="cancel"></div>
+    <div class="sheet-card">
+      <div class="sheet-bar">
+        <button class="ok" data-sact="done">Done</button>
+        <h2>${esc(s.name || 'Step')}</h2>
+        <button data-sact="cancel">Cancel</button>
+      </div>
+      <div class="wheels">
+        <div class="hl"></div>
+        <label>MIN</label>${wheelHTML('wm', 60)}
+        <label>SEC</label>${wheelHTML('ws', 60)}
+      </div>
+      <div class="chips">${[5, 10, 15, 20, 30, 45, 60, 90, 120, 180, 300].map(v => `<button data-chip="${v}">${fmtShort(v)}</button>`).join('')}</div>
+      <div class="colors">${COLOR_ORDER.map(c => `<button data-pc="${c}" style="background:${COLORS[c]}" aria-label="${c}"></button>`).join('')}</div>
+    </div>`;
+  sh.classList.remove('hidden');
+  for (const id of ['wm', 'ws']) {
+    const el = $(id);
+    el.addEventListener('scroll', () => markWheel(el), { passive: true });
+  }
+  setWheels(s.sec, false);
+  paintColors();
+}
+function setWheels(sec, smooth) {
+  const m = Math.min(59, Math.floor(sec / 60)), s = sec % 60;
+  for (const [id, v] of [['wm', m], ['ws', s]]) {
+    const el = $(id);
+    el.scrollTo({ top: v * ITEM_H, behavior: smooth ? 'smooth' : 'instant' });
+    markWheel(el, v);
+  }
+}
+function wheelVal(el) { return Math.max(0, Math.min(59, Math.round(el.scrollTop / ITEM_H))); }
+function markWheel(el, v = wheelVal(el)) {
+  const items = el.querySelectorAll('div:not(.pad)');
+  items.forEach((d, i) => d.classList.toggle('on', i === v));
+}
+function paintColors() {
+  document.querySelectorAll('[data-pc]').forEach(b => { b.innerHTML = b.dataset.pc === pick.color ? I.check : ''; });
+}
+function closeSheet() { const sh = $('sheet'); sh.classList.add('hidden'); sh.innerHTML = ''; pick = null; }
+$('sheet').addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('[data-chip]')) { setWheels(+t.closest('[data-chip]').dataset.chip, true); return; }
+  if (t.closest('[data-pc]')) { pick.color = t.closest('[data-pc]').dataset.pc; paintColors(); return; }
+  const a = t.closest('[data-sact]'); if (!a) return;
+  if (a.dataset.sact === 'done') {
+    const sec = wheelVal($('wm')) * 60 + wheelVal($('ws'));
+    const s = draft.blocks[pick.bi].steps[pick.si];
+    s.sec = sec; s.color = pick.color;
+    closeSheet(); renderEdit();
+  } else closeSheet();
+});
+
+// ---------- Run engine ----------
+// Timing is anchored to performance.now() deadlines, so it never drifts and
+// catches up correctly after the tab was throttled in the background.
+let ticker = null;
+function startRun(w) {
+  const seq = flatten(w);
+  if (!seq.length) { toast('Add at least one step with a time first'); return; }
+  const after = new Array(seq.length).fill(0);
+  for (let i = seq.length - 2; i >= 0; i--) after[i] = after[i + 1] + seq[i + 1].sec;
+  run = { w, seq, after, idx: 0, remainMs: seq[0].sec * 1000, endAt: 0, paused: true, started: false, done: false, lastPip: null };
+  go('run');
+}
+function stopRun() { clearInterval(ticker); ticker = null; wakeOff(); run = null; }
+function togglePlay() {
+  audio.unlock();
+  if (run.done) { restart(); return; }
+  if (run.paused) {
+    if (!run.started) { run.started = true; announce(run.seq[0]); }
+    run.paused = false;
+    run.endAt = performance.now() + run.remainMs;
+    run.lastPip = Math.ceil(run.remainMs / 1000);
+    clearInterval(ticker); ticker = setInterval(tick, 100);
+    wakeOn();
+  } else {
+    run.remainMs = Math.max(0, run.endAt - performance.now());
+    run.paused = true; clearInterval(ticker); ticker = null; wakeOff();
+  }
+  updRun();
+}
+function restart() {
+  const w = run.w; stopRun(); startRun(w);
+  // startRun pushed nothing new (already in run view); just re-render.
+  view = 'run'; render();
+}
+function remaining() { return run.paused ? run.remainMs : Math.max(0, run.endAt - performance.now()); }
+function skip(d) {
+  if (run.done) return;
+  audio.unlock();
+  let i = run.idx;
+  const elapsed = run.seq[i].sec * 1000 - remaining();
+  if (d < 0 && elapsed > 2000) { /* restart current step */ }
+  else i += d;
+  if (i < 0) i = 0;
+  if (i >= run.seq.length) { finish(); return; }
+  run.idx = i;
+  const ms = run.seq[i].sec * 1000;
+  if (run.paused) run.remainMs = ms;
+  else { run.endAt = performance.now() + ms; announce(run.seq[i]); }
+  run.lastPip = run.seq[i].sec;
+  updRun();
+}
+function tick() {
+  if (!run || run.paused || run.done) return;
+  const now = performance.now();
+  let rem = run.endAt - now;
+  while (rem <= 0) {
+    run.idx++;
+    if (run.idx >= run.seq.length) { finish(); return; }
+    run.endAt += run.seq[run.idx].sec * 1000;
+    rem = run.endAt - now;
+    run.lastPip = run.seq[run.idx].sec;
+    if (rem > 0) announce(run.seq[run.idx]); // don't chime for steps skipped while asleep
+  }
+  const left = Math.ceil(rem / 1000);
+  if (left <= 3 && left >= 1 && left < run.lastPip) { sfx.pip(); run.lastPip = left; }
+  updRun();
+}
+function finish() {
+  run.done = true; run.paused = true; run.idx = run.seq.length - 1; run.remainMs = 0;
+  clearInterval(ticker); ticker = null; wakeOff();
+  sfx.done(); buzz([100, 80, 100, 80, 250]);
+  updRun();
+}
+
+function renderRun() {
+  app.innerHTML = `
+    <div class="run">
+      <header class="rtop">
+        <button class="icon-btn" data-act="exit" aria-label="Exit">${I.close}</button>
+        <div><div class="rname">${esc(run.w.name)}</div><div class="rtot" id="rTot"></div></div>
+        <button class="icon-btn" data-act="sound" aria-label="Sound">${soundOn ? I.soundOn : I.soundOff}</button>
+      </header>
+      <section class="cur" id="cur">
+        <div class="clabel" id="cLabel"></div>
+        <div class="ctime" id="cTime"></div>
+        <div class="cmeta" id="cMeta"></div>
+        <div class="prog"><i id="cProg"></i></div>
+      </section>
+      <section class="nxt" id="nxt"><div class="nlabel" id="nLabel"></div><div class="ntime" id="nTime"></div></section>
+      <footer class="ctrl">
+        <div class="stat l"><b id="sStep"></b><span>STEP</span></div>
+        <button class="skip" data-act="skip" data-d="-1" aria-label="Previous">${I.prev}</button>
+        <button class="big" data-act="toggle" id="bPlay" aria-label="Play or pause"></button>
+        <button class="skip" data-act="skip" data-d="1" aria-label="Next">${I.next}</button>
+        <div class="stat r"><b id="sRound"></b><span>ROUND</span></div>
+      </footer>
+    </div>`;
+  run.ui = { rTot: $('rTot'), cur: $('cur'), cLabel: $('cLabel'), cTime: $('cTime'), cMeta: $('cMeta'), cProg: $('cProg'),
+    nxt: $('nxt'), nLabel: $('nLabel'), nTime: $('nTime'), sStep: $('sStep'), sRound: $('sRound'), bPlay: $('bPlay') };
+  run.uiIcon = null;
+  updRun();
+}
+function updRun() {
+  if (!run || !run.ui) return;
+  const u = run.ui, s = run.seq[run.idx], nx = run.seq[run.idx + 1];
+  const rem = remaining();
+  const set = (el, prop, v) => { if (el[prop] !== v) el[prop] = v; };
+  if (run.done) {
+    u.cur.style.backgroundColor = COLORS.green;
+    set(u.cLabel, 'textContent', 'Done!');
+    set(u.cTime, 'textContent', fmt(run.after[0] + run.seq[0].sec));
+    u.cTime.classList.toggle('long', u.cTime.textContent.length > 5);
+    set(u.cMeta, 'textContent', 'GREAT WORK');
+    u.cProg.style.width = '100%';
+    u.nxt.style.backgroundColor = 'var(--surface)'; u.nxt.classList.add('end');
+    set(u.nLabel, 'textContent', 'TAP ↻ TO GO AGAIN'); set(u.nTime, 'textContent', '');
+    set(u.rTot, 'textContent', '00:00');
+  } else {
+    const left = Math.ceil(rem / 1000);
+    u.cur.style.backgroundColor = COLORS[s.color];
+    set(u.cLabel, 'textContent', s.name);
+    set(u.cTime, 'textContent', fmt(left));
+    u.cTime.classList.toggle('long', u.cTime.textContent.length > 5);
+    set(u.cMeta, 'textContent', [s.block, s.rounds > 1 ? `ROUND ${s.round}/${s.rounds}` : ''].filter(Boolean).join(' · '));
+    u.cProg.style.width = `${Math.min(100, (1 - rem / (s.sec * 1000)) * 100)}%`;
+    if (nx) {
+      u.nxt.style.backgroundColor = COLORS[nx.color]; u.nxt.classList.remove('end');
+      set(u.nLabel, 'textContent', `NEXT: ${nx.name}`); set(u.nTime, 'textContent', fmt(nx.sec));
+    } else {
+      u.nxt.style.backgroundColor = 'var(--surface)'; u.nxt.classList.add('end');
+      set(u.nLabel, 'textContent', 'NEXT: FINISH'); set(u.nTime, 'textContent', '🏁');
+    }
+    set(u.rTot, 'textContent', fmt(left + run.after[run.idx]));
+  }
+  set(u.sStep, 'textContent', `${run.idx + 1}/${run.seq.length}`);
+  set(u.sRound, 'textContent', `${s.round}/${s.rounds}`);
+  const icon = run.done ? 'again' : run.paused ? 'play' : 'pause';
+  if (run.uiIcon !== icon) { u.bPlay.innerHTML = I[icon]; run.uiIcon = icon; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && run && !run.paused && !run.done) { wakeOn(); tick(); }
+});
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
+}
+
+render();
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
