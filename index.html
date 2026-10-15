@@ -101,7 +101,8 @@ svg{display:block}
 
 /* ---------- Run ---------- */
 .run{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
-.rtop{display:grid;grid-template-columns:52px 1fr 52px;align-items:center;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;text-align:center}
+.rtop{display:grid;grid-template-columns:100px 1fr 100px;align-items:center;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;text-align:center}
+.rtop .pair{display:flex;gap:8px;justify-content:flex-end}
 .rtop .icon-btn{background:none;border:2px solid var(--yellow);color:var(--yellow)}
 .rname{font-family:var(--display);font-size:20px;color:var(--yellow);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
 .rtot{font-family:var(--display);font-size:46px;color:var(--yellow);line-height:1}
@@ -139,6 +140,7 @@ const COLOR_ORDER = ['green', 'red', 'yellow', 'blue'];
 const KEY = 'timer.workouts.v1';
 const VOLUME_KEY = 'timer.volume.v1';
 const LEGACY_SOUND_KEY = 'timer.sound.v1';
+const VOICE_KEY = 'timer.voice.v1';
 const $ = id => document.getElementById(id);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -167,6 +169,8 @@ const I = {
   soundOn:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
   soundMax:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5M17.5 7a7 7 0 0 1 0 10M20 4.5a10.5 10.5 0 0 1 0 15"/></svg>',
   soundOff:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+  voiceOn:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg>',
+  voiceOff:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M3 3l18 18"/></svg>',
   check:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
 };
 
@@ -195,6 +199,8 @@ let workouts = load();
 const VOLUMES = ['high', 'max', 'off'];
 const MASTER = { high: 1, max: 2.4, off: 0 };
 let volume = 'high';
+let voiceOn = true;
+try { voiceOn = localStorage.getItem(VOICE_KEY) !== '0'; } catch (e) {}
 try {
   const v = localStorage.getItem(VOLUME_KEY);
   if (VOLUMES.includes(v)) volume = v;
@@ -261,11 +267,39 @@ const sfx = {
   done: () => [784, 988, 1175, 1568].forEach((f, i) => bell(f, i * 0.14, i === 3 ? 1.5 : 0.55, 0.5)),
 };
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+// ---------- Voice prompts (device text-to-speech) ----------
+const tts = window.speechSynthesis;
+let enVoice = null;
+function pickVoice() {
+  if (!tts) return;
+  const vs = tts.getVoices().filter(v => /^en[-_]/i.test(v.lang));
+  enVoice = vs.find(v => /^en[-_]US/i.test(v.lang) && v.localService) || vs.find(v => /^en[-_]US/i.test(v.lang)) || vs[0] || null;
+}
+if (tts) { pickVoice(); tts.addEventListener && tts.addEventListener('voiceschanged', pickVoice); }
+const canSpeak = () => !!tts && voiceOn && volume !== 'off';
+function say(text) {
+  if (!canSpeak()) return false;
+  try {
+    tts.cancel(); // never let prompts queue up and drift behind the clock
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; if (enVoice) u.voice = enVoice;
+    u.rate = 1.05; u.volume = 1;
+    tts.speak(u);
+    return true;
+  } catch (e) { return false; }
+}
+const hush = () => { try { tts && tts.cancel(); } catch (e) {} };
+const WORDS = ['', 'one', 'two', 'three'];
+
+// Step start: speak the step's name, or chime when the voice is off.
 function announce(s) {
   const effort = s.color === 'green' || s.color === 'blue';
-  effort ? sfx.go() : sfx.ease();
+  if (!say(s.name)) effort ? sfx.go() : sfx.ease();
   buzz(effort ? [70, 60, 70] : [120]);
 }
+// Last three seconds of a step: "three, two, one", or pips.
+function countdown(n) { if (!say(WORDS[n])) sfx.pip(); }
 
 // ---------- Screen wake lock ----------
 let wakeLock = null;
@@ -438,6 +472,13 @@ app.addEventListener('click', e => {
     case 'exit':
       if (run && run.started && !run.done && !confirm('End this workout?')) break;
       goHome(); break;
+    case 'voice':
+      voiceOn = !voiceOn;
+      try { localStorage.setItem(VOICE_KEY, voiceOn ? '1' : '0'); } catch (e) {}
+      t.innerHTML = voiceOn ? I.voiceOn : I.voiceOff;
+      if (voiceOn && !tts) toast('Voice is not supported on this device');
+      else { toast(voiceOn ? 'Voice: ON' : 'Voice: OFF (beeps)'); audio.unlock(); voiceOn ? say('Voice on') : sfx.pip(); }
+      break;
     case 'sound':
       volume = VOLUMES[(VOLUMES.indexOf(volume) + 1) % VOLUMES.length];
       try { localStorage.setItem(VOLUME_KEY, volume); } catch (e) {}
@@ -524,7 +565,7 @@ function startRun(w) {
   run = { w, seq, after, idx: 0, remainMs: seq[0].sec * 1000, endAt: 0, paused: true, started: false, done: false, lastPip: null };
   go('run');
 }
-function stopRun() { clearInterval(ticker); ticker = null; wakeOff(); run = null; }
+function stopRun() { clearInterval(ticker); ticker = null; wakeOff(); hush(); run = null; }
 function togglePlay() {
   audio.unlock();
   if (run.done) { restart(); return; }
@@ -537,7 +578,7 @@ function togglePlay() {
     wakeOn();
   } else {
     run.remainMs = Math.max(0, run.endAt - performance.now());
-    run.paused = true; clearInterval(ticker); ticker = null; wakeOff();
+    run.paused = true; clearInterval(ticker); ticker = null; wakeOff(); hush();
   }
   updRun();
 }
@@ -576,13 +617,13 @@ function tick() {
     if (rem > 0) announce(run.seq[run.idx]); // don't chime for steps skipped while asleep
   }
   const left = Math.ceil(rem / 1000);
-  if (left <= 3 && left >= 1 && left < run.lastPip) { sfx.pip(); run.lastPip = left; }
+  if (left <= 3 && left >= 1 && left < run.lastPip) { countdown(left); run.lastPip = left; }
   updRun();
 }
 function finish() {
   run.done = true; run.paused = true; run.idx = run.seq.length - 1; run.remainMs = 0;
   clearInterval(ticker); ticker = null; wakeOff();
-  sfx.done(); buzz([100, 80, 100, 80, 250]);
+  sfx.done(); setTimeout(() => say('Workout complete'), 700); buzz([100, 80, 100, 80, 250]);
   updRun();
 }
 
@@ -592,7 +633,10 @@ function renderRun() {
       <header class="rtop">
         <button class="icon-btn" data-act="exit" aria-label="Exit">${I.close}</button>
         <div><div class="rname">${esc(run.w.name)}</div><div class="rtot" id="rTot"></div></div>
-        <button class="icon-btn" data-act="sound" aria-label="Volume">${volumeIcon()}</button>
+        <div class="pair">
+          <button class="icon-btn" data-act="voice" aria-label="Voice">${voiceOn ? I.voiceOn : I.voiceOff}</button>
+          <button class="icon-btn" data-act="sound" aria-label="Volume">${volumeIcon()}</button>
+        </div>
       </header>
       <section class="cur" id="cur">
         <div class="clabel" id="cLabel"></div>

@@ -1,5 +1,5 @@
 // Makes the app installable and fully usable offline.
-const CACHE = 'timer-v2';
+const CACHE = 'timer-v3';
 const SHELL = ['./', './index.html', './icon.svg', './manifest.webmanifest'];
 
 self.addEventListener('install', e => {
