@@ -137,7 +137,8 @@ svg{display:block}
 const COLORS = { green:'#9CFF3D', red:'#F2392C', yellow:'#FFF23D', blue:'#3BAEE6' };
 const COLOR_ORDER = ['green', 'red', 'yellow', 'blue'];
 const KEY = 'timer.workouts.v1';
-const SOUND_KEY = 'timer.sound.v1';
+const VOLUME_KEY = 'timer.volume.v1';
+const LEGACY_SOUND_KEY = 'timer.sound.v1';
 const $ = id => document.getElementById(id);
 const uid = () => Math.random().toString(36).slice(2, 10);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -164,6 +165,7 @@ const I = {
   copy:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
   trash:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
   soundOn:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  soundMax:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v6h4l5 4V5L7 9z" fill="currentColor"/><path d="M15 9.5a3.5 3.5 0 0 1 0 5M17.5 7a7 7 0 0 1 0 10M20 4.5a10.5 10.5 0 0 1 0 15"/></svg>',
   soundOff:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
   check:'<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
 };
@@ -189,8 +191,15 @@ function load() {
 }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(workouts)); } catch (e) {} }
 let workouts = load();
-let soundOn = true;
-try { soundOn = localStorage.getItem(SOUND_KEY) !== '0'; } catch (e) {}
+// Volume levels: 'high' (default), 'max' (boosted into a limiter), 'off'.
+const VOLUMES = ['high', 'max', 'off'];
+const MASTER = { high: 1, max: 2.4, off: 0 };
+let volume = 'high';
+try {
+  const v = localStorage.getItem(VOLUME_KEY);
+  if (VOLUMES.includes(v)) volume = v;
+  else if (localStorage.getItem(LEGACY_SOUND_KEY) === '0') volume = 'off';
+} catch (e) {}
 
 // Expand blocks × repeats into the flat sequence the timer plays.
 function flatten(w) {
@@ -205,32 +214,51 @@ function flatten(w) {
 }
 const totalSec = w => flatten(w).reduce((a, s) => a + s.sec, 0);
 
-// ---------- Audio: soft bell tones via Web Audio ----------
+// ---------- Audio: bright bell tones via Web Audio ----------
+// Tones sit in the 1-2 kHz range and run through a limiter, so they cut
+// through music playing in another app (Spotify, YouTube Music) without
+// distorting. A web page can't duck other apps' audio, so loudness and
+// pitch are what make the cues audible over music.
 const audio = {
-  ctx: null,
+  ctx: null, master: null,
   unlock() {
-    if (!this.ctx) { const C = window.AudioContext || window.webkitAudioContext; if (C) this.ctx = new C(); }
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    if (!this.ctx) {
+      const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+      const c = this.ctx = new C();
+      const limiter = c.createDynamicsCompressor();
+      limiter.threshold.value = -4; limiter.knee.value = 2; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.12;
+      this.master = c.createGain();
+      this.master.connect(limiter).connect(c.destination);
+      applyVolume();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
   },
 };
+function applyVolume() { if (audio.master) audio.master.gain.value = MASTER[volume]; }
 function tone(freq, at, dur, vol, type = 'sine') {
-  const c = audio.ctx; if (!c || !soundOn) return;
+  const c = audio.ctx; if (!c || volume === 'off') return;
   const t = c.currentTime + at;
   const o = c.createOscillator(), g = c.createGain();
   o.type = type; o.frequency.value = freq;
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(c.destination);
+  g.gain.linearRampToValueAtTime(vol, t + 0.005);              // fast, click-free attack
+  g.gain.exponentialRampToValueAtTime(vol * 0.4, t + dur * 0.35); // hold some body...
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);           // ...then ring out
+  o.connect(g).connect(audio.master);
   o.start(t); o.stop(t + dur + 0.05);
 }
-// A bell = sine fundamental + a quiet, faster-decaying octave for shimmer.
-function bell(f, at, dur, vol) { tone(f, at, dur, vol); tone(f * 2, at, dur * 0.45, vol * 0.18); }
+// A bell = triangle fundamental (bright but round) + sine octave and twelfth for shimmer.
+function bell(f, at, dur, vol) {
+  tone(f, at, dur, vol, 'triangle');
+  tone(f * 2, at, dur * 0.6, vol * 0.35);
+  tone(f * 3, at, dur * 0.3, vol * 0.12);
+}
 const sfx = {
-  pip: () => bell(659, 0, 0.18, 0.16),
-  go: () => { bell(784, 0, 0.45, 0.24); bell(1175, 0.11, 0.8, 0.22); },     // rising: effort starts
-  ease: () => { bell(1047, 0, 0.45, 0.2); bell(698, 0.11, 0.8, 0.2); },     // falling: rest starts
-  done: () => [523, 659, 784, 1047].forEach((f, i) => bell(f, i * 0.13, i === 3 ? 1.4 : 0.5, 0.22)),
+  pip: () => bell(1175, 0, 0.3, 0.95),
+  go: () => { bell(1047, 0, 0.5, 0.55); bell(1568, 0.13, 0.9, 0.5); },     // rising: effort starts
+  ease: () => { bell(1568, 0, 0.5, 0.5); bell(1047, 0.13, 0.9, 0.55); },   // falling: rest starts
+  done: () => [784, 988, 1175, 1568].forEach((f, i) => bell(f, i * 0.14, i === 3 ? 1.5 : 0.55, 0.5)),
 };
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
 function announce(s) {
@@ -411,8 +439,10 @@ app.addEventListener('click', e => {
       if (run && run.started && !run.done && !confirm('End this workout?')) break;
       goHome(); break;
     case 'sound':
-      soundOn = !soundOn; try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
-      t.innerHTML = soundOn ? I.soundOn : I.soundOff; break;
+      volume = VOLUMES[(VOLUMES.indexOf(volume) + 1) % VOLUMES.length];
+      try { localStorage.setItem(VOLUME_KEY, volume); } catch (e) {}
+      audio.unlock(); applyVolume(); sfx.pip();
+      t.innerHTML = volumeIcon(); toast(`Volume: ${volume.toUpperCase()}`); break;
   }
 });
 
@@ -562,7 +592,7 @@ function renderRun() {
       <header class="rtop">
         <button class="icon-btn" data-act="exit" aria-label="Exit">${I.close}</button>
         <div><div class="rname">${esc(run.w.name)}</div><div class="rtot" id="rTot"></div></div>
-        <button class="icon-btn" data-act="sound" aria-label="Sound">${soundOn ? I.soundOn : I.soundOff}</button>
+        <button class="icon-btn" data-act="sound" aria-label="Volume">${volumeIcon()}</button>
       </header>
       <section class="cur" id="cur">
         <div class="clabel" id="cLabel"></div>
@@ -626,6 +656,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && run && !run.paused && !run.done) { wakeOn(); tick(); }
 });
 
+function volumeIcon() { return volume === 'off' ? I.soundOff : volume === 'max' ? I.soundMax : I.soundOn; }
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
   document.body.appendChild(t); setTimeout(() => t.remove(), 2200);
